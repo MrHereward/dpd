@@ -4,7 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import dpd.DTOs.CreateFileRequestDTO;
 import dpd.DTOs.UpdateFileRequestDTO;
 import dpd.entities.File;
+import dpd.entities.Folder;
 import dpd.repositories.FileRepository;
+import dpd.repositories.FolderRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,7 +21,7 @@ import java.util.Arrays;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-public class FileControllerTest {
+public class FileControllerTests {
 
     @Autowired
     private MockMvc mockMvc;
@@ -28,24 +30,42 @@ public class FileControllerTest {
     private FileRepository fileRepository;
 
     @Autowired
+    private FolderRepository folderRepository;
+
+    @Autowired
     private ObjectMapper objectMapper;
 
     private File testFile;
+    private Folder testFolder1;
+    private Folder testFolder2;
 
     @BeforeEach
     void setUp() {
-        testFile = File
-                .builder()
-                .filename("file.txt")
-                .sizeInBytes(100)
-                .folders(Arrays.asList("folder1", "folder2"))
+        testFolder1 = Folder.builder()
+                .name("test_folder_1")
                 .build();
+
+        testFolder2 = Folder.builder()
+                .name("test_folder_2")
+                .build();
+
+        folderRepository.save(testFolder1);
+        folderRepository.save(testFolder2);
+
+        testFile = File.builder()
+                .filename("test_file.txt")
+                .sizeInBytes(100)
+                .folders(Arrays.asList(testFolder1, testFolder2))
+                .build();
+
         fileRepository.save(testFile);
     }
 
     @AfterEach
     void tearDown() {
-        fileRepository.delete(testFile);
+        fileRepository.deleteById(testFile.getFilename());
+        folderRepository.deleteById(testFolder1.getName());
+        folderRepository.deleteById(testFolder2.getName());
     }
 
     @Test
@@ -55,8 +75,8 @@ public class FileControllerTest {
                 .andExpect(MockMvcResultMatchers.jsonPath("$.filename").value(testFile.getFilename()))
                 .andExpect(MockMvcResultMatchers.jsonPath("$.sizeInBytes").value(testFile.getSizeInBytes()))
                 .andExpect(MockMvcResultMatchers.jsonPath("$.folders.length()").value(2))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.folders[0]").value("folder1"))
-                .andExpect(MockMvcResultMatchers.jsonPath("$.folders[1]").value("folder2"));
+                .andExpect(MockMvcResultMatchers.jsonPath("$.folders[0]").value(testFolder1.getName()))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.folders[1]").value(testFolder2.getName()));
     }
 
     @Test
@@ -71,7 +91,7 @@ public class FileControllerTest {
                 .builder()
                 .filename("another_file.txt")
                 .sizeInBytes(200)
-                .folders(Arrays.asList("folder1", "folder2"))
+                .folders(Arrays.asList(testFolder1.getName(), testFolder2.getName()))
                 .build();
 
         mockMvc.perform(MockMvcRequestBuilders.post("/api/files")
@@ -88,7 +108,22 @@ public class FileControllerTest {
                 .builder()
                 .filename("")
                 .sizeInBytes(200)
-                .folders(Arrays.asList("folder1", "folder2"))
+                .folders(Arrays.asList(testFolder1.getName(), testFolder2.getName()))
+                .build();
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/api/files")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(createFileRequestDTO)))
+                .andExpect(MockMvcResultMatchers.status().isBadRequest());
+    }
+
+    @Test
+    void createFileFolderNotFound() throws Exception {
+        CreateFileRequestDTO createFileRequestDTO = CreateFileRequestDTO
+                .builder()
+                .filename("")
+                .sizeInBytes(200)
+                .folders(Arrays.asList(testFolder1.getName(), testFolder2.getName(), "test_folder_3"))
                 .build();
 
         mockMvc.perform(MockMvcRequestBuilders.post("/api/files")
@@ -102,7 +137,7 @@ public class FileControllerTest {
         UpdateFileRequestDTO updateFileRequestDTO = UpdateFileRequestDTO
                 .builder()
                 .sizeInBytes(1000)
-                .folders(Arrays.asList("folderX", "folderY", "folderZ"))
+                .folders(Arrays.asList(testFolder1.getName()))
                 .build();
 
         mockMvc.perform(MockMvcRequestBuilders.put("/api/files/{filename}", testFile.getFilename())
@@ -116,12 +151,38 @@ public class FileControllerTest {
         UpdateFileRequestDTO updateFileRequestDTO = UpdateFileRequestDTO
                 .builder()
                 .sizeInBytes(1000)
-                .folders(Arrays.asList("folderX", "folderY", "folderZ"))
+                .folders(Arrays.asList())
                 .build();
 
         mockMvc.perform(MockMvcRequestBuilders.put("/api/files/{filename}", "notExistingFile.txt")
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(updateFileRequestDTO)))
+                .andExpect(MockMvcResultMatchers.status().isNotFound());
+    }
+
+    @Test
+    void updateFileFolderNotFound() throws Exception {
+        UpdateFileRequestDTO updateFileRequestDTO = UpdateFileRequestDTO
+                .builder()
+                .sizeInBytes(1000)
+                .folders(Arrays.asList("folderZ"))
+                .build();
+
+        mockMvc.perform(MockMvcRequestBuilders.put("/api/files/{filename}", "notExistingFile.txt")
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(updateFileRequestDTO)))
+                .andExpect(MockMvcResultMatchers.status().isBadRequest());
+    }
+
+    @Test
+    void deleteFile() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.delete("/api/files/{filename}", testFile.getFilename()))
+                .andExpect(MockMvcResultMatchers.status().isNoContent());
+    }
+
+    @Test
+    void deleteFileNotFound() throws Exception {
+        mockMvc.perform(MockMvcRequestBuilders.delete("/api/files/{filename}", "NotExistingFile.txt"))
                 .andExpect(MockMvcResultMatchers.status().isNotFound());
     }
 }
