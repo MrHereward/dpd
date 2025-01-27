@@ -1,6 +1,7 @@
 package dpd.services;
 
 import dpd.DTOs.CreateFileRequestDTO;
+import dpd.DTOs.FileReportResponseDTO;
 import dpd.DTOs.FileResponseDTO;
 import dpd.DTOs.UpdateFileRequestDTO;
 import dpd.entities.File;
@@ -121,5 +122,19 @@ public class FileService {
         } else {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
+    }
+
+    public ResponseEntity<FileReportResponseDTO> getFileReport() {
+        log.info("[FileService] get file report");
+
+        FileReportResponseDTO fileReportResponseDTO = FileReportResponseDTO
+                .builder()
+                .filesSize(fileRepository.sumAllFilesSizeInBytes())
+                .averageFileSize(fileRepository.getAverageFilesSizeInBytes())
+                .maxFileSize(fileRepository.getMaxSizeInBytes())
+                .minFileSize(fileRepository.getMinSizeInBytes())
+                .filesNumber(fileRepository.count())
+                .build();
+        return ResponseEntity.status(HttpStatus.OK).body(fileReportResponseDTO);
     }
 }
