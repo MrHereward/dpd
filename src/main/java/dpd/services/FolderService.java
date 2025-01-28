@@ -71,31 +71,51 @@ public class FolderService {
     }
 
     @Transactional
-    public ResponseEntity<Void> updateFolder(String name, UpdateFolderRequestDTO updateFolderRequestDTO) {
+    public ResponseEntity<?> updateFolder(String name, UpdateFolderRequestDTO updateFolderRequestDTO) {
         log.info("[FolderService] update folder");
 
         Optional<Folder> folder = folderRepository.findById(name);
+        if (folder.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
 
         List<Folder> folders = new ArrayList<>();
 
         if (updateFolderRequestDTO != null && updateFolderRequestDTO.getSubFolders() != null) {
-            for (String folderName : updateFolderRequestDTO.getSubFolders()) {
-                Optional<Folder> optional_folder = folderRepository.findById(folderName);
-                if (optional_folder.isPresent()) {
-                    folders.add(optional_folder.get());
+            for (String subFolder : updateFolderRequestDTO.getSubFolders()) {
+                Optional<Folder> tempFolder = folderRepository.findById(subFolder);
+                if (tempFolder.isPresent()) {
+                    folders.add(tempFolder.get());
                 } else {
                     return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
                 }
             }
+
+            List<Folder> allFolders = folderRepository.findAll();
+            Map<String, List<String>> allFoldersMap = new HashMap<>();
+
+            for (Folder tempFolder : allFolders) {
+                allFoldersMap.put(tempFolder.getName(), tempFolder.getSubFolders()
+                        .stream()
+                        .map(Folder::getName)
+                        .collect(Collectors.toList()));
+            }
+
+            allFoldersMap.put(name, updateFolderRequestDTO.getSubFolders());
+
+            CyclePathResponseDTO cyclePathResponseDTO = CyclePathResponseDTO
+                    .builder()
+                    .cyclePath(detectCycle(name, allFoldersMap))
+                    .build();
+            if (!cyclePathResponseDTO.getCyclePath().isEmpty()) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(cyclePathResponseDTO);
+            }
         }
 
-        if (folder.isPresent()) {
-            folder.get().setSubFolders(folders);
-            folderRepository.save(folder.get());
-            return ResponseEntity.status(HttpStatus.OK).build();
-        } else {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
+        folder.get().setSubFolders(folders);
+        folderRepository.save(folder.get());
+
+        return ResponseEntity.status(HttpStatus.OK).build();
     }
 
     @Transactional
@@ -242,5 +262,35 @@ public class FolderService {
         }
 
         return report;
+    }
+
+    public List<String> detectCycle(String startFolder, Map<String, List<String>> allFoldersMap) {
+        Set<String> visited = new HashSet<>();
+        List<String> currentPath = new ArrayList<>();
+
+        return dfsDetectCycle(startFolder, allFoldersMap, visited, currentPath);
+    }
+
+    public List<String> dfsDetectCycle(String currentFolder, Map<String, List<String>> allFoldersMap, Set<String> visited, List<String> currentPath) {
+        visited.add(currentFolder);
+        currentPath.add(currentFolder);
+
+        List<String> subFolders = allFoldersMap.getOrDefault(currentFolder, Collections.emptyList());
+        for (String subFolderName : subFolders) {
+            if (!visited.contains(subFolderName)) {
+                List<String> cycle = dfsDetectCycle(subFolderName, allFoldersMap, visited, currentPath);
+                if (!cycle.isEmpty()) {
+                    return cycle;
+                }
+            } else if (currentPath.contains(subFolderName)) {
+                int startIndex = currentPath.indexOf(subFolderName);
+                List<String> cycle = new ArrayList<>(currentPath.subList(startIndex, currentPath.size()));
+                cycle.add(subFolderName);
+                return cycle;
+            }
+        }
+
+        currentPath.remove(currentPath.size() - 1);
+        return Collections.emptyList();
     }
 }

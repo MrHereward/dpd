@@ -30,7 +30,7 @@ public class FolderController {
     }
 
     @PutMapping("{name}")
-    public ResponseEntity<Void> updateFolder(@PathVariable String name, @RequestBody @Valid UpdateFolderRequestDTO updateFolderRequestDTO) {
+    public ResponseEntity<?> updateFolder(@PathVariable String name, @RequestBody @Valid UpdateFolderRequestDTO updateFolderRequestDTO) {
         log.info("[FolderController] update folder");
         return folderService.updateFolder(name, updateFolderRequestDTO);
     }
