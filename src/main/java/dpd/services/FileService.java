@@ -61,8 +61,8 @@ public class FileService {
         List<Folder> folders = new ArrayList<>();
 
         if (createFileRequestDTO.getFolders() != null) {
-            for (String folder_name : createFileRequestDTO.getFolders()) {
-                Optional<Folder> folder = folderRepository.findById(folder_name);
+            for (String folderName : createFileRequestDTO.getFolders()) {
+                Optional<Folder> folder = folderRepository.findById(folderName);
                 if (folder.isPresent()) {
                     folders.add(folder.get());
                 } else {
@@ -89,9 +89,9 @@ public class FileService {
 
         List<Folder> folders = new ArrayList<>();
 
-        if (updateFileRequestDTO.getFolders() != null) {
-            for (String folder_name : updateFileRequestDTO.getFolders()) {
-                Optional<Folder> folder = folderRepository.findById(folder_name);
+        if (updateFileRequestDTO != null && updateFileRequestDTO.getFolders() != null) {
+            for (String folderName : updateFileRequestDTO.getFolders()) {
+                Optional<Folder> folder = folderRepository.findById(folderName);
                 if (folder.isPresent()) {
                     folders.add(folder.get());
                 } else {
