@@ -143,6 +143,22 @@ public class FolderControllerTests {
     }
 
     @Test
+    void updateFolderCycleDetected() throws Exception {
+        UpdateFolderRequestDTO updateFolderRequestDTO = UpdateFolderRequestDTO
+                .builder()
+                .subFolders(Arrays.asList(testFolder2.getName()))
+                .build();
+
+        mockMvc.perform(MockMvcRequestBuilders.put("/api/folders/{name}", testFolder1.getName())
+                        .contentType("application/json")
+                        .content(objectMapper.writeValueAsString(updateFolderRequestDTO)))
+                .andExpect(MockMvcResultMatchers.status().isBadRequest())
+                .andExpect(MockMvcResultMatchers.jsonPath("$.cyclePath[0]").value(testFolder1.getName()))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.cyclePath[1]").value(testFolder2.getName()))
+                .andExpect(MockMvcResultMatchers.jsonPath("$.cyclePath[2]").value(testFolder1.getName()));
+    }
+
+    @Test
     void deleteFolder() throws Exception {
         mockMvc.perform(MockMvcRequestBuilders.delete("/api/folders/{name}", testFolder1.getName()))
                 .andExpect(MockMvcResultMatchers.status().isNoContent());
