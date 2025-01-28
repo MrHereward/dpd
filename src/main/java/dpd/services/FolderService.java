@@ -51,8 +51,8 @@ public class FolderService {
         List<Folder> folders = new ArrayList<>();
 
         if (createFolderRequestDTO.getSubFolders() != null) {
-            for (String folder_name : createFolderRequestDTO.getSubFolders()) {
-                Optional<Folder> folder = folderRepository.findById(folder_name);
+            for (String folderName : createFolderRequestDTO.getSubFolders()) {
+                Optional<Folder> folder = folderRepository.findById(folderName);
                 if (folder.isPresent()) {
                     folders.add(folder.get());
                 } else {
@@ -78,9 +78,9 @@ public class FolderService {
 
         List<Folder> folders = new ArrayList<>();
 
-        if (updateFolderRequestDTO != null) {
-            for (String folder_name : updateFolderRequestDTO.getSubFolders()) {
-                Optional<Folder> optional_folder = folderRepository.findById(folder_name);
+        if (updateFolderRequestDTO != null && updateFolderRequestDTO.getSubFolders() != null) {
+            for (String folderName : updateFolderRequestDTO.getSubFolders()) {
+                Optional<Folder> optional_folder = folderRepository.findById(folderName);
                 if (optional_folder.isPresent()) {
                     folders.add(optional_folder.get());
                 } else {
